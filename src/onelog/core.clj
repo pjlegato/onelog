@@ -75,7 +75,7 @@ that namespace to go to the default general logfile.
      "Specify a specific logfile for the current namespace. This is
 only necessary if you don't want to use the general default logfile
 for that namespace."
-     (set-logger! (str *ns*)
+     (set-namespace-logger! (str *ns*)
                   *loglevel*
                   (appender-for-file logfile))))
 
@@ -85,8 +85,8 @@ for that namespace."
      (log-config/set-loggers! :root
                              {:level loglevel
                               :out (appender-for-file logfile)}))
-  ([logfile] (set-root-logger! logfile *loglevel*))
-  ([] (set-root-logger! *logfile* *loglevel*)))
+  ([logfile] (set-default-logger! logfile *loglevel*))
+  ([] (set-default-logger! *logfile* *loglevel*)))
 
 
 
