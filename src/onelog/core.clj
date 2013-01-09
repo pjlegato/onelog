@@ -2,6 +2,11 @@
   "Batteries-included logging for Clojure. You can require this one
 file and begin logging, with no further configuration necessary.
 
+
+BUG - TODO: Fix so that (set-default-logger!) gets called automatically if
+the user tries to log without calling it first.
+
+TODO: Add profiling methods (i.e. run a function and log how long it took)
 "
   (require
    [clj-logging-config.log4j :as log-config]
