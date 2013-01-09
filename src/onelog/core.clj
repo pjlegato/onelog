@@ -18,6 +18,11 @@ file and begin logging, with no further configuration necessary.
 
 ;; If set to true, will copy all log messages to STDOUT in addition to logging them
 (def ^:dynamic *copy-to-console* false)
+(defmacro with-console
+  "Executes the given code block with all log messages copied to
+  STDOUT in addition to logging them."
+  [ & forms]
+  (binding [*copy-to-console* true] ~@forms))
 
 ;; The generation of the calling class, line numbers, etc. is
 ;; extremely slow, and should be used only in development mode or for
