@@ -2,9 +2,15 @@
 
 Batteries-included logging for Clojure.
 
+Be aware that this is alpha code. It may have bugs, and the API may
+change before the final release. Pull requests are welcome!
+
 ## Usage
 
-TODO
+Require `onelog.core`. Call `(set-default-logger!)` with an optional
+logfile name. Then call `(info "whatever")`, `(warn "foo")`, etc. 
+
+More docs to come.
 
 ## License
 
