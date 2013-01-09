@@ -1,4 +1,4 @@
-(defproject onelog "0.2.0-SNAPSHOT"
+(defproject onelog "0.2.0"
   :description "Batteries-included logging for Clojure"
   :url "https://github.com.com/pjlegato/onelog"
   :license {:name "Eclipse Public License"
