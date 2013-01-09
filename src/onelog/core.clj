@@ -15,7 +15,7 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
    )
   (import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
 
-(def ^:dynamic *logfile* "logs/clojure.log")
+(def ^:dynamic *logfile* "log/clojure.log")
 (def ^:dynamic *loglevel* :info)
 
 (def ^:dynamic *warn-color* [:bright :yellow])
