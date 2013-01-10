@@ -2,6 +2,11 @@
   "Batteries-included logging for Clojure. You can require this one
 file and begin logging, with no further configuration necessary.
 
+
+BUG - TODO: Fix so that (set-default-logger!) gets called automatically if
+the user tries to log without calling it first.
+
+TODO: Add profiling methods (i.e. run a function and log how long it took)
 "
   (require
    [clj-logging-config.log4j :as log-config]
@@ -10,7 +15,7 @@ file and begin logging, with no further configuration necessary.
    )
   (import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
 
-(def ^:dynamic *logfile* "logs/clojure.log")
+(def ^:dynamic *logfile* "log/clojure.log")
 (def ^:dynamic *loglevel* :info)
 
 (def ^:dynamic *warn-color* [:bright :yellow])
@@ -84,22 +89,22 @@ for that namespace."
                   *loglevel*
                   (appender-for-file logfile))))
 
-(defn set-default-logger!
-  "Sets a default, appwide log adapter."
+(defn start!
+  "Sets a default, appwide log adapter. Optional arguments set the
+default logfile and loglevel. If no logfile is provided, logs to
+log/clojure.log from the current working directory."
   ([logfile loglevel]
      (log-config/set-loggers! :root
                              {:level loglevel
                               :out (appender-for-file logfile)}))
-  ([logfile] (set-default-logger! logfile *loglevel*))
-  ([] (set-default-logger! *logfile* *loglevel*)))
-
-
-
+  ([logfile] (start! logfile *loglevel*))
+  ([] (start! *logfile* *loglevel*)))
 
 
 ;; Unfortunately, log/warn, log/error, etc. are all macros, which
 ;; makes generating higher order functions on them annoying. So we use
 ;; another macro.
+;; TODO: condense the two branches.
 (defmacro make-logger [logger-symbol & colors]
   (if colors
     `(fn [args#]
@@ -107,8 +112,9 @@ for that namespace."
          (if *copy-to-console* (println output#))
          (~logger-symbol output#)))
     `(fn [args#]
-       (if *copy-to-console* (apply println args#))
-       (~logger-symbol (apply str args#)))))
+       (let [output# (apply str args#)]
+         (if *copy-to-console* (println output#))
+         (~logger-symbol output#)))))
 
 (def trace (make-logger log/trace))
 (def debug (make-logger log/debug))
@@ -174,4 +180,11 @@ for that namespace."
    (let [cause (root-cause tr)]
      (if (not (identical? cause tr))
        (str (ansi/style "\n\n  Caused by:\n" :bright :white) (throwable cause))))))
+
+
+(defn set-default-logger!
+  "Deprecated old name for start!."
+  [ & args]
+  (apply start! args)
+  (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
 
