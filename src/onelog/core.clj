@@ -105,6 +105,7 @@ log/clojure.log from the current working directory."
 ;; makes generating higher order functions on them annoying. So we use
 ;; another macro.
 ;; TODO: condense the two branches.
+;; TODO: Remove dependency on clojure.tools.logging altogether, make these regular functions.
 (defmacro make-logger [logger-symbol & colors]
   (if colors
     `(fn [args#]
