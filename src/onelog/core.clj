@@ -105,16 +105,18 @@ log/clojure.log from the current working directory."
 ;; makes generating higher order functions on them annoying. So we use
 ;; another macro.
 ;; TODO: condense the two branches.
+;; TODO: Remove dependency on clojure.tools.logging altogether, make these regular functions.
 (defmacro make-logger [logger-symbol & colors]
   (if colors
-    `(fn [args#]
+    `(fn [& args#]
        (let [output# (ansi/style (apply str args#) ~@colors)]
          (if *copy-to-console* (println output#))
          (~logger-symbol output#)))
-    `(fn [args#]
+    `(fn [& args#]
        (let [output# (apply str args#)]
          (if *copy-to-console* (println output#))
          (~logger-symbol output#)))))
+
 
 (def trace (make-logger log/trace))
 (def debug (make-logger log/debug))
@@ -122,38 +124,42 @@ log/clojure.log from the current working directory."
 (def warn  (make-logger log/warn  *warn-color*))
 (def error (make-logger log/error *error-color*))
 (def fatal (make-logger log/fatal))
+(def spy (make-logger log/spy))
 
 (defn trace+
   "Like trace, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (trace forms)))
+  (with-console (apply trace forms)))
 
 (defn debug+
   "Like debug, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (debug forms)))
+  (with-console (apply debug forms)))
 
 (defn info+
   "Like info, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (info forms)))
+  (with-console (apply info forms)))
 
 (defn warn+
   "Like warn, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (warn forms)))
+  (with-console (apply warn forms)))
 
 (defn error+
   "Like error, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (error forms)))
+  (with-console (apply error forms)))
 
 (defn fatal+
   "Like fatal, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (fatal forms)))
+  (with-console (apply fatal forms)))
 
-
+(defn spy+
+  "Like spy, but copies messages to STDOUT in addition to logging them."
+  [ & forms]
+  (with-console (apply spy forms)))
 
 (defn stacktrace
   "Converts a Throwable into a sequence of strings with the stacktrace."
@@ -181,10 +187,8 @@ log/clojure.log from the current working directory."
      (if (not (identical? cause tr))
        (str (ansi/style "\n\n  Caused by:\n" :bright :white) (throwable cause))))))
 
-
 (defn set-default-logger!
   "Deprecated old name for start!."
   [ & args]
   (apply start! args)
   (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
-
