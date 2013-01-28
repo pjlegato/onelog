@@ -129,34 +129,37 @@ log/clojure.log from the current working directory."
 (defn trace+
   "Like trace, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (trace forms)))
+  (with-console (apply trace forms)))
 
 (defn debug+
   "Like debug, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (debug forms)))
+  (with-console (apply debug forms)))
 
 (defn info+
   "Like info, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (info forms)))
+  (with-console (apply info forms)))
 
 (defn warn+
   "Like warn, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (warn forms)))
+  (with-console (apply warn forms)))
 
 (defn error+
   "Like error, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (error forms)))
+  (with-console (apply error forms)))
 
 (defn fatal+
   "Like fatal, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (fatal forms)))
+  (with-console (apply fatal forms)))
 
-
+(defn spy+
+  "Like spy, but copies messages to STDOUT in addition to logging them."
+  [ & forms]
+  (with-console (apply spy forms)))
 
 (defn stacktrace
   "Converts a Throwable into a sequence of strings with the stacktrace."
