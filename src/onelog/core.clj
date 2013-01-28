@@ -2,6 +2,11 @@
   "Batteries-included logging for Clojure. You can require this one
 file and begin logging, with no further configuration necessary.
 
+
+BUG - TODO: Fix so that (set-default-logger!) gets called automatically if
+the user tries to log without calling it first.
+
+TODO: Add profiling methods (i.e. run a function and log how long it took)
 "
   (require
    [clj-logging-config.log4j :as log-config]
@@ -10,7 +15,7 @@ file and begin logging, with no further configuration necessary.
    )
   (import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
 
-(def ^:dynamic *logfile* "logs/clojure.log")
+(def ^:dynamic *logfile* "log/clojure.log")
 (def ^:dynamic *loglevel* :info)
 
 (def ^:dynamic *warn-color* [:bright :yellow])
@@ -18,6 +23,11 @@ file and begin logging, with no further configuration necessary.
 
 ;; If set to true, will copy all log messages to STDOUT in addition to logging them
 (def ^:dynamic *copy-to-console* false)
+(defmacro with-console
+  "Executes the given code block with all log messages copied to
+  STDOUT in addition to logging them."
+  [ & forms]
+  `(binding [*copy-to-console* true] ~@forms))
 
 ;; The generation of the calling class, line numbers, etc. is
 ;; extremely slow, and should be used only in development mode or for
@@ -79,30 +89,33 @@ for that namespace."
                   *loglevel*
                   (appender-for-file logfile))))
 
-(defn set-default-logger!
-  "Sets a default, appwide log adapter."
+(defn start!
+  "Sets a default, appwide log adapter. Optional arguments set the
+default logfile and loglevel. If no logfile is provided, logs to
+log/clojure.log from the current working directory."
   ([logfile loglevel]
      (log-config/set-loggers! :root
                              {:level loglevel
                               :out (appender-for-file logfile)}))
-  ([logfile] (set-default-logger! logfile *loglevel*))
-  ([] (set-default-logger! *logfile* *loglevel*)))
-
-
-
+  ([logfile] (start! logfile *loglevel*))
+  ([] (start! *logfile* *loglevel*)))
 
 
 ;; Unfortunately, log/warn, log/error, etc. are all macros, which
 ;; makes generating higher order functions on them annoying. So we use
 ;; another macro.
+;; TODO: condense the two branches.
 (defmacro make-logger [logger-symbol & colors]
   (if colors
-    `(fn [& args#]
-               (if *copy-to-console* (println (apply ansi/style (apply str args#) ~@colors)))
-               (~logger-symbol (apply ansi/style (apply str args#) ~@colors)))
-    `(fn [& args#]
-               (if *copy-to-console* (apply println args#))
-               (~logger-symbol (apply str args#)))))
+    `(fn [args#]
+       (let [output# (ansi/style (apply str args#) ~@colors)]
+         (if *copy-to-console* (println output#))
+         (~logger-symbol output#)))
+    `(fn [args#]
+       (let [output# (apply str args#)]
+         (if *copy-to-console* (println output#))
+         (~logger-symbol output#)))))
+
 
 (def trace (make-logger log/trace))
 (def debug (make-logger log/debug))
@@ -111,6 +124,38 @@ for that namespace."
 (def error (make-logger log/error *error-color*))
 (def fatal (make-logger log/fatal))
 (def spy (make-logger log/spy))
+
+(defn trace+
+  "Like trace, but copies messages to STDOUT in addition to logging them."
+  [ & forms]
+  (with-console (trace forms)))
+
+(defn debug+
+  "Like debug, but copies messages to STDOUT in addition to logging them."
+  [ & forms]
+  (with-console (debug forms)))
+
+(defn info+
+  "Like info, but copies messages to STDOUT in addition to logging them."
+  [ & forms]
+  (with-console (info forms)))
+
+(defn warn+
+  "Like warn, but copies messages to STDOUT in addition to logging them."
+  [ & forms]
+  (with-console (warn forms)))
+
+(defn error+
+  "Like error, but copies messages to STDOUT in addition to logging them."
+  [ & forms]
+  (with-console (error forms)))
+
+(defn fatal+
+  "Like fatal, but copies messages to STDOUT in addition to logging them."
+  [ & forms]
+  (with-console (fatal forms)))
+
+
 
 (defn stacktrace
   "Converts a Throwable into a sequence of strings with the stacktrace."
@@ -143,3 +188,11 @@ for that namespace."
   [& forms]
   `(binding [*copy-to-console* true]
      ~@forms))
+
+(defn set-default-logger!
+  "Deprecated old name for start!."
+  [ & args]
+  (apply start! args)
+  (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
+
+
