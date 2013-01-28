@@ -98,7 +98,7 @@ for that namespace."
 (defmacro make-logger [logger-symbol & colors]
   (if colors
     `(fn [& args#]
-               (if *copy-to-console* (apply println args#))
+               (if *copy-to-console* (println (apply ansi/style (apply str args#) ~@colors)))
                (~logger-symbol (apply ansi/style (apply str args#) ~@colors)))
     `(fn [& args#]
                (if *copy-to-console* (apply println args#))
@@ -110,6 +110,7 @@ for that namespace."
 (def warn  (make-logger log/warn  *warn-color*))
 (def error (make-logger log/error *error-color*))
 (def fatal (make-logger log/fatal))
+(def spy (make-logger log/spy))
 
 (defn stacktrace
   "Converts a Throwable into a sequence of strings with the stacktrace."
@@ -137,3 +138,8 @@ for that namespace."
      (if (not (identical? cause tr))
        (str (ansi/style "\n\n  Caused by:\n" :bright :white) (throwable cause))))))
 
+(defmacro with-console-log
+  "Copies any log messages emitted in its body to the console, too."
+  [& forms]
+  `(binding [*copy-to-console* true]
+     ~@forms))
