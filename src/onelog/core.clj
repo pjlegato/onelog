@@ -89,14 +89,24 @@ for that namespace."
                   *loglevel*
                   (appender-for-file logfile))))
 
+(def initialized (atom false))
 (defn start!
   "Sets a default, appwide log adapter. Optional arguments set the
 default logfile and loglevel. If no logfile is provided, logs to
-log/clojure.log from the current working directory."
-  ([logfile loglevel]
-     (log-config/set-loggers! :root
-                             {:level loglevel
-                              :out (appender-for-file logfile)}))
+log/clojure.log from the current working directory.
+
+If 'initialized' is true, does nothing unless 'force' is true. This is
+so that multiple libraries can all call this in the same project and
+share the same logfile, while each also specifying a default logfile
+for itself when used separately.
+"
+  ([logfile loglevel force]
+     (when (or (not @initialized) force)
+       (log-config/set-loggers! :root
+                                {:level loglevel
+                                 :out (appender-for-file logfile)})
+       (swap! initialized (constantly true))))
+  ([logfile loglevel] (start! logfile loglevel false))
   ([logfile] (start! logfile *loglevel*))
   ([] (start! *logfile* *loglevel*)))
 
