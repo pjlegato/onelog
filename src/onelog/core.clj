@@ -184,12 +184,6 @@ log/clojure.log from the current working directory."
      (if (not (identical? cause tr))
        (str (ansi/style "\n\n  Caused by:\n" :bright :white) (throwable cause))))))
 
-(defmacro with-console-log
-  "Copies any log messages emitted in its body to the console, too."
-  [& forms]
-  `(binding [*copy-to-console* true]
-     ~@forms))
-
 (defn set-default-logger!
   "Deprecated old name for start!."
   [ & args]
