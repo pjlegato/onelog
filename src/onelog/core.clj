@@ -108,11 +108,11 @@ log/clojure.log from the current working directory."
 ;; TODO: Remove dependency on clojure.tools.logging altogether, make these regular functions.
 (defmacro make-logger [logger-symbol & colors]
   (if colors
-    `(fn [args#]
+    `(fn [& args#]
        (let [output# (ansi/style (apply str args#) ~@colors)]
          (if *copy-to-console* (println output#))
          (~logger-symbol output#)))
-    `(fn [args#]
+    `(fn [& args#]
        (let [output# (apply str args#)]
          (if *copy-to-console* (println output#))
          (~logger-symbol output#)))))
@@ -189,5 +189,3 @@ log/clojure.log from the current working directory."
   [ & args]
   (apply start! args)
   (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
-
-
