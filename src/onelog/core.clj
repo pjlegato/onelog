@@ -29,6 +29,7 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
   [ & forms]
   `(binding [*copy-to-console* true] ~@forms))
 
+
 ;; The generation of the calling class, line numbers, etc. is
 ;; extremely slow, and should be used only in development mode or for
 ;; debugging. Production code should not log that information if
@@ -72,6 +73,10 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
    logfile
    true))
 
+;; 1-arity function which makes a log appender for the given filename
+(def ^:dynamic *appender-fn* rotating-logger)
+
+
 (defn set-namespace-logger!
   ([ns log-level log-adapter]
      "Specify a specific logging appender for the given
@@ -80,7 +85,7 @@ that namespace to go to the default general logfile.
 "
      (log-config/set-logger! ns
                              :level log-level
-                             :out (appender-for-file *logfile*)))
+                             :out (*appender-fn* *logfile*)))
   ([logfile]
      "Specify a specific logfile for the current namespace. This is
 only necessary if you don't want to use the general default logfile
@@ -89,14 +94,24 @@ for that namespace."
                   *loglevel*
                   (appender-for-file logfile))))
 
+(def initialized (atom false))
 (defn start!
   "Sets a default, appwide log adapter. Optional arguments set the
 default logfile and loglevel. If no logfile is provided, logs to
-log/clojure.log from the current working directory."
-  ([logfile loglevel]
-     (log-config/set-loggers! :root
-                             {:level loglevel
-                              :out (appender-for-file logfile)}))
+log/clojure.log from the current working directory.
+
+If 'initialized' is true, does nothing unless 'force' is true. This is
+so that multiple libraries can all call this in the same project and
+share the same logfile, while each also specifying a default logfile
+for itself when used separately.
+"
+  ([logfile loglevel force]
+     (when (or (not @initialized) force)
+       (log-config/set-loggers! :root
+                                {:level loglevel
+                                 :out (appender-for-file logfile)})
+       (swap! initialized (constantly true))))
+  ([logfile loglevel] (start! logfile loglevel false))
   ([logfile] (start! logfile *loglevel*))
   ([] (start! *logfile* *loglevel*)))
 
@@ -105,16 +120,18 @@ log/clojure.log from the current working directory."
 ;; makes generating higher order functions on them annoying. So we use
 ;; another macro.
 ;; TODO: condense the two branches.
+;; TODO: Remove dependency on clojure.tools.logging altogether, make these regular functions.
 (defmacro make-logger [logger-symbol & colors]
   (if colors
-    `(fn [args#]
+    `(fn [& args#]
        (let [output# (ansi/style (apply str args#) ~@colors)]
          (if *copy-to-console* (println output#))
          (~logger-symbol output#)))
-    `(fn [args#]
+    `(fn [& args#]
        (let [output# (apply str args#)]
          (if *copy-to-console* (println output#))
          (~logger-symbol output#)))))
+
 
 (def trace (make-logger log/trace))
 (def debug (make-logger log/debug))
@@ -122,38 +139,42 @@ log/clojure.log from the current working directory."
 (def warn  (make-logger log/warn  *warn-color*))
 (def error (make-logger log/error *error-color*))
 (def fatal (make-logger log/fatal))
+(def spy (make-logger log/spy))
 
 (defn trace+
   "Like trace, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (trace forms)))
+  (with-console (apply trace forms)))
 
 (defn debug+
   "Like debug, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (debug forms)))
+  (with-console (apply debug forms)))
 
 (defn info+
   "Like info, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (info forms)))
+  (with-console (apply info forms)))
 
 (defn warn+
   "Like warn, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (warn forms)))
+  (with-console (apply warn forms)))
 
 (defn error+
   "Like error, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (error forms)))
+  (with-console (apply error forms)))
 
 (defn fatal+
   "Like fatal, but copies messages to STDOUT in addition to logging them."
   [ & forms]
-  (with-console (fatal forms)))
+  (with-console (apply fatal forms)))
 
-
+(defn spy+
+  "Like spy, but copies messages to STDOUT in addition to logging them."
+  [ & forms]
+  (with-console (apply spy forms)))
 
 (defn stacktrace
   "Converts a Throwable into a sequence of strings with the stacktrace."
@@ -181,10 +202,8 @@ log/clojure.log from the current working directory."
      (if (not (identical? cause tr))
        (str (ansi/style "\n\n  Caused by:\n" :bright :white) (throwable cause))))))
 
-
 (defn set-default-logger!
   "Deprecated old name for start!."
   [ & args]
   (apply start! args)
   (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
-
