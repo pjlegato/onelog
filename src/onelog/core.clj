@@ -92,7 +92,7 @@ only necessary if you don't want to use the general default logfile
 for that namespace."
      (set-namespace-logger! (str *ns*)
                   *loglevel*
-                  (appender-for-file logfile))))
+                  (*appender-fn* logfile))))
 
 (def initialized (atom false))
 (defn start!
