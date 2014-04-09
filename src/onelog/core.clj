@@ -29,6 +29,7 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
   [ & forms]
   `(binding [*copy-to-console* true] ~@forms))
 
+
 ;; The generation of the calling class, line numbers, etc. is
 ;; extremely slow, and should be used only in development mode or for
 ;; debugging. Production code should not log that information if
@@ -72,6 +73,10 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
    logfile
    true))
 
+;; 1-arity function which makes a log appender for the given filename
+(def ^:dynamic *appender-fn* rotating-logger)
+
+
 (defn set-namespace-logger!
   ([ns log-level log-adapter]
      "Specify a specific logging appender for the given
@@ -80,7 +85,7 @@ that namespace to go to the default general logfile.
 "
      (log-config/set-logger! ns
                              :level log-level
-                             :out (appender-for-file *logfile*)))
+                             :out (*appender-fn* *logfile*)))
   ([logfile]
      "Specify a specific logfile for the current namespace. This is
 only necessary if you don't want to use the general default logfile
