@@ -24,7 +24,7 @@ timestamp and the log level prepended. Error messages are colored
 bright red, warning messages are bright yellow, and everything else is
 uncolored.
 
-    ````
+
     user> (require '[onelog.core :as log])
     nil
     user> (log/start!)
@@ -33,18 +33,18 @@ uncolored.
     nil
     user> (slurp "log/clojure.log")
     "2014-04-09 13:12:08,003 [ERROR] : [0mHello, world![0m\n"
-    ````
+
     
 ### Logging to a different file
 
-    ````
+
     user> (log/start! "/tmp/foo.log")
     true
     user> (log/error "A different logfile")
     nil
     user> (slurp "/tmp/foo.log")
     "2014-04-09 13:18:25,845 [ERROR] : [0mA different logfile[0m\n"
-    ````
+
 
 ### Changing the logfile after startup
 `start!` attempts to be idempotent; subsequent calls after the first one have no
@@ -52,28 +52,28 @@ effect unless the `force` argument is true. If you want to change the global log
 after calling `start!`, you have to use the 3 argument version and set `force` to true:
 
 
-    ````
+
     user> (log/start! "/tmp/bar.log" :info true)
     true
     user> (log/error "Hi")
     nil
     user> (slurp "/tmp/bar.log")
     "2014-04-09 13:19:22,103 [ERROR] : [0mHi[0m\n"
-    ````
+
 
 ### Copying log messages to STDOUT
 
 Appending a + (plus sign) to the standard logging functions will copy 
 the messages to STDOUT in addition to logging them to the log file:
 
-    ````
+
     user> (log/info+ "ABC 123")
     ABC 123
     nil
     user> (log/warn+ "DEF 456")
     DEF 456
     nil
-    ````
+
 
 ### Logging exceptions and stack traces
 
@@ -81,7 +81,7 @@ A convenience method is provided to transform a throwable into a printable stack
 If the exception has a cause exception embedded in it, it walks the chain of causes
 until it finds the root exception and logs that, too.
 
-    ````
+
     user> (log/error (log/throwable (Exception. "A test exception")))
     nil
     user> (println (slurp "/tmp/foo.log"))
@@ -91,7 +91,7 @@ until it finds the root exception and logs that, too.
     clojure.lang.Compiler.eval(Compiler.java:6666)
     clojure.core$eval.invoke(core.clj:2927)
     [...]
-    ````
+
 
 ## Complex logging situations 
 
