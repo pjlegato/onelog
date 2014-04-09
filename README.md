@@ -19,11 +19,11 @@ logging in a process going to one file.
 
 ### Basic logging
 
-The default logger logs to a file called `log/clojure.log` with a
-timestamp and the log level prepended. Error messages are colored
-bright red, warning messages are bright yellow, and everything else is
-uncolored.
+Add the following dependency to your `project.clj`:
 
+    [onelog "0.4.3"]
+
+You can now require Onelog and start logging:
 
     user> (require '[onelog.core :as log])
     nil
@@ -34,6 +34,11 @@ uncolored.
     user> (slurp "log/clojure.log")
     "2014-04-09 13:12:08,003 [ERROR] : [0mHello, world![0m\n"
 
+
+The default logger logs to a file called `log/clojure.log` with a
+timestamp and the log level prepended. Error messages are colored
+bright red, warning messages are bright yellow, and everything else is
+uncolored.
     
 ### Logging to a different file
 
