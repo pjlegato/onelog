@@ -43,8 +43,8 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
 ;; to the log if none is set, which we don't want, which is why it's
 ;; not here now.
 ;;
-(def debugging-log-prefix-format "%d %l [%p] : %throwable%m%n")
-(def production-log-prefix-format "%d [%p] : %throwable%m%n")
+(def debugging-log-prefix-format "%d (%t) %l [%p] : (%x) %throwable%m%n")
+(def production-log-prefix-format "%d (%t) [%p] : (%x) %throwable%m%n")
 
 
 ;; Some basic logging adapters.
