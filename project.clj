@@ -6,4 +6,6 @@
   :dependencies [
                  [org.clojure/tools.logging "0.2.6"]
                  [clj-logging-config "1.9.10"]
-                 [org.clojars.pjlegato/clansi "1.3.0"]])
+                 [org.clojars.pjlegato/clansi "1.3.0"]
+                 [org.slf4j/slf4j-log4j12 "1.7.7"]
+                 ])
