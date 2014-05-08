@@ -214,3 +214,23 @@ for itself when used separately.
   - :debug, :info, :warn, etc."
   [level]
   (log-config/set-logger-level! level))
+
+
+(defn color
+  "ANSI colorizes the given data and returns it.
+
+   The first argument is a either a color specifier as per clansi.core, or a collection
+   of color specifiers. For example, :white or [:bright :white] are valid
+
+  Subsequent arguments are concatenated into a string.
+
+   Examples:
+
+     (log/error (log/color [:bright :red] \"foo\"))
+     (log/error (log/color :red \"foo\"))
+"
+  [colors & data]
+  (let [colors (if (coll? colors)
+                 colors
+                 (vector colors))]
+    (apply ansi/style (apply str data) colors)))
