@@ -8,9 +8,9 @@ the user tries to log without calling it first.
 
 TODO: Add profiling methods (i.e. run a function and log how long it took)
 "
-  (require
-   [clj-logging-config.log4j :as log-config]
+  (:require
    [clojure.tools.logging :as log]
+   [clj-logging-config.log4j :as log-config]
    [clansi.core :as ansi]
    )
   (import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
@@ -109,7 +109,7 @@ for itself when used separately.
      (when (or (not @initialized) force)
        (log-config/set-loggers! :root
                                 {:level loglevel
-                                 :out (appender-for-file logfile)})
+                                 :out (rotating-logger logfile)})
        (swap! initialized (constantly true))))
   ([logfile loglevel] (start! logfile loglevel false))
   ([logfile] (start! logfile *loglevel*))
@@ -207,3 +207,10 @@ for itself when used separately.
   [ & args]
   (apply start! args)
   (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
+
+
+(defn set-log-level!
+  "Sets the global log level to the given level. Levels are keywords
+  - :debug, :info, :warn, etc."
+  [level]
+  (log-config/set-logger-level! level))
