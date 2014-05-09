@@ -15,6 +15,25 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
    )
   (import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
 
+(defn color
+  "ANSI colorizes the given data and returns it.
+
+   The first argument is a either a color specifier as per clansi.core, or a collection
+   of color specifiers. For example, :white or [:bright :white] are valid
+
+  Subsequent arguments are concatenated into a string.
+
+   Examples:
+
+     (log/error (log/color [:bright :red] \"foo\"))
+     (log/error (log/color :red \"foo\"))
+"
+  [colors & data]
+  (let [colors (if (coll? colors)
+                 colors
+                 (vector colors))]
+    (apply ansi/style (apply str data) colors)))
+
 (def ^:dynamic *logfile* "log/clojure.log")
 (def ^:dynamic *loglevel* :info)
 
@@ -117,64 +136,85 @@ for itself when used separately.
 
 
 ;; Unfortunately, log/warn, log/error, etc. are all macros, which
-;; makes generating higher order functions on them annoying. So we use
-;; another macro.
-;; TODO: condense the two branches.
-;; TODO: Remove dependency on clojure.tools.logging altogether, make these regular functions.
-(defmacro make-logger [logger-symbol & colors]
-  (if colors
-    `(fn [& args#]
-       (let [output# (ansi/style (apply str args#) ~@colors)]
-         (if *copy-to-console* (println output#))
-         (~logger-symbol output#)))
-    `(fn [& args#]
-       (let [output# (apply str args#)]
-         (if *copy-to-console* (println output#))
-         (~logger-symbol output#)))))
+;; makes generating higher order functions on them annoying. So we convert them to functions.
+(defn trace 
+  [& forms]
+  (log/trace (apply str forms)))
+
+(defn debug
+  [& forms]
+  (log/debug (apply str forms)))
+
+(defn info
+  [& forms]
+  (log/info (apply str forms)))
+
+(defn warn
+  [& forms] 
+  (log/warn (apply color [:bright :yellow] forms)))
+
+(defn error
+  [& forms] 
+  (log/error (apply color [:bright :red] forms)))
+
+(defn fatal
+  [& forms] 
+  (log/fatal (apply color [:bright :red] forms)))
 
 
-(def trace (make-logger log/trace))
-(def debug (make-logger log/debug))
-(def info  (make-logger log/info))
-(def warn  (make-logger log/warn  *warn-color*))
-(def error (make-logger log/error *error-color*))
-(def fatal (make-logger log/fatal))
-(def spy (make-logger log/spy))
+(defn spy
+  [& forms]
+  (log/spy forms))
+
+
+(defn println-stderr
+  [& forms]
+  (binding [*out* *err*]
+    (apply println forms)))
 
 (defn trace+
-  "Like trace, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply trace forms)))
+  "Like trace, but copies messages to STDERR in addition to logging them."
+  [& forms]
+  (println-stderr "[TRACE]" (apply str forms))
+  (trace forms))
 
 (defn debug+
-  "Like debug, but copies messages to STDOUT in addition to logging them."
+  "Like debug, but copies messages to STDERR in addition to logging them."
   [ & forms]
-  (with-console (apply debug forms)))
+  (println-stderr "[DEBUG]" (apply str forms))
+  (debug forms))
 
 (defn info+
-  "Like info, but copies messages to STDOUT in addition to logging them."
+  "Like info, but copies messages to STDERR in addition to logging them."
   [ & forms]
-  (with-console (apply info forms)))
+  (println-stderr "[INFO]" (apply str forms))
+  (info forms))
 
 (defn warn+
-  "Like warn, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply warn forms)))
+  "Like warn, but copies messages to STDERR in addition to logging them."
+  [& forms]
+  (println-stderr "[WARN]" (apply str forms))
+  (warn forms))
 
 (defn error+
-  "Like error, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply error forms)))
+  "Like error, but copies messages to STDERR in addition to logging them."
+  [& forms]
+  (println-stderr "[ERROR]" (apply str forms))
+  (error forms))
 
 (defn fatal+
-  "Like fatal, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply fatal forms)))
+  "Like fatal, but copies messages to STDERR in addition to logging them."
+  [& forms]
+  (println-stderr "[FATAL]" (apply str forms))
+  (fatal forms))
 
 (defn spy+
-  "Like spy, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply spy forms)))
+  "Like spy, but copies messages to STDERR in addition to logging them."
+  [& forms]
+  (println-stderr "[SPY]" (apply str forms))
+  (spy forms))
+
+
 
 (defn stacktrace
   "Converts a Throwable into a sequence of strings with the stacktrace."
@@ -216,21 +256,6 @@ for itself when used separately.
   (log-config/set-logger-level! level))
 
 
-(defn color
-  "ANSI colorizes the given data and returns it.
-
-   The first argument is a either a color specifier as per clansi.core, or a collection
-   of color specifiers. For example, :white or [:bright :white] are valid
-
-  Subsequent arguments are concatenated into a string.
-
-   Examples:
-
-     (log/error (log/color [:bright :red] \"foo\"))
-     (log/error (log/color :red \"foo\"))
-"
-  [colors & data]
-  (let [colors (if (coll? colors)
-                 colors
-                 (vector colors))]
-    (apply ansi/style (apply str data) colors)))
+(defn set-debug! [] (set-log-level! :debug))
+(defn set-info! [] (set-log-level! :info))
+(defn set-info! [] (set-log-level! :warn))
