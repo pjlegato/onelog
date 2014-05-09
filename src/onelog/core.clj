@@ -162,9 +162,13 @@ for itself when used separately.
   (log/fatal (apply color [:bright :red] forms)))
 
 
-(defn spy
+(defmacro spy
   [& forms]
-  (log/spy forms))
+  `(let [result# (do ~@forms)]
+     (debug "[SPY] Evaluated forms: " (color [:bright :white] '~@forms) 
+            " and got: " (color [:magenta] result#) 
+            " which is a: " (class result#))
+     result#))
 
 
 (defn println-stderr
