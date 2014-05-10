@@ -176,47 +176,43 @@ for itself when used separately.
   (binding [*out* *err*]
     (apply println forms)))
 
-(defn trace+
-  "Like trace, but copies messages to STDERR in addition to logging them."
-  [& forms]
-  (println-stderr "[TRACE]" (apply str forms))
-  (trace forms))
 
-(defn debug+
-  "Like debug, but copies messages to STDERR in addition to logging them."
-  [ & forms]
-  (println-stderr "[DEBUG]" (apply str forms))
-  (debug forms))
+(defmacro plus-logger
+  "Defines a new logger function called by the given symbol name suffixed with a plus.
+   This function copies forms given to it to STDERR in addition to
+  logging them at the specified level.
 
-(defn info+
-  "Like info, but copies messages to STDERR in addition to logging them."
-  [ & forms]
-  (println-stderr "[INFO]" (apply str forms))
-  (info forms))
+   For example, (plus-logger info) creates a function called
+  info+. Calling (info+ \"foo\") is the same as calling (info \"foo\"),
+  except that the message will be written to STDERR in addition to
+  logged at the :info level.  "
+  [logger-sym]
+  (let [fn-name (symbol (str logger-sym "+"))]
+    `(def ~fn-name
+       (fn
+         [& forms#]
+         (let [forms# (apply str forms#)]
+           (println-stderr (str "[" (.toUpperCase (str '~logger-sym)) "] " forms#))
+           (~logger-sym forms#)
+           )))))
 
-(defn warn+
-  "Like warn, but copies messages to STDERR in addition to logging them."
-  [& forms]
-  (println-stderr "[WARN]" (apply str forms))
-  (warn forms))
+(plus-logger trace)
+(plus-logger info)
+(plus-logger debug)
+(plus-logger warn)
+(plus-logger error)
+(plus-logger fatal)
 
-(defn error+
-  "Like error, but copies messages to STDERR in addition to logging them."
-  [& forms]
-  (println-stderr "[ERROR]" (apply str forms))
-  (error forms))
 
-(defn fatal+
-  "Like fatal, but copies messages to STDERR in addition to logging them."
-  [& forms]
-  (println-stderr "[FATAL]" (apply str forms))
-  (fatal forms))
-
-(defn spy+
+(defmacro spy+
   "Like spy, but copies messages to STDERR in addition to logging them."
   [& forms]
-  (println-stderr "[SPY]" (apply str forms))
-  (spy forms))
+  `(let [result#  (do ~@forms)
+         message# (str "[SPY] Evaluated forms: " (color [:bright :white] '~@forms) 
+                       " and got: " (color [:magenta] result#) 
+                       " which is a: " (class result#))]
+     (println-stderr message#)
+     (debug message#)))
 
 
 
@@ -257,9 +253,9 @@ for itself when used separately.
   "Sets the global log level to the given level. Levels are keywords
   - :debug, :info, :warn, etc."
   [level]
-  (log-config/set-logger-level! level))
+  (log-config/set-logger-level! :root level))
 
 
 (defn set-debug! [] (set-log-level! :debug))
-(defn set-info! [] (set-log-level! :info))
-(defn set-info! [] (set-log-level! :warn))
+(defn set-info!  [] (set-log-level! :info))
+(defn set-warn!  [] (set-log-level! :warn))
