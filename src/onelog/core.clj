@@ -193,8 +193,7 @@ for itself when used separately.
          [& forms#]
          (let [forms# (apply str forms#)]
            (println-stderr (str "[" (.toUpperCase (str '~logger-sym)) "] " forms#))
-           (~logger-sym forms#)
-           )))))
+           (~logger-sym forms#))))))
 
 (plus-logger trace)
 (plus-logger info)
