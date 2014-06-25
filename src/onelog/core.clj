@@ -255,6 +255,7 @@ for itself when used separately.
   (log-config/set-logger-level! :root level))
 
 
+(defn set-trace! [] (set-log-level! :trace))
 (defn set-debug! [] (set-log-level! :debug))
 (defn set-info!  [] (set-log-level! :info))
 (defn set-warn!  [] (set-log-level! :warn))
