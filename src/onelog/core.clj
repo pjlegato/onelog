@@ -8,12 +8,31 @@ the user tries to log without calling it first.
 
 TODO: Add profiling methods (i.e. run a function and log how long it took)
 "
-  (require
-   [clj-logging-config.log4j :as log-config]
+  (:require
    [clojure.tools.logging :as log]
+   [clj-logging-config.log4j :as log-config]
    [clansi.core :as ansi]
    )
   (import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
+
+(defn color
+  "ANSI colorizes the given data and returns it.
+
+   The first argument is a either a color specifier as per clansi.core, or a collection
+   of color specifiers. For example, :white or [:bright :white] are valid
+
+  Subsequent arguments are concatenated into a string.
+
+   Examples:
+
+     (log/error (log/color [:bright :red] \"foo\"))
+     (log/error (log/color :red \"foo\"))
+"
+  [colors & data]
+  (let [colors (if (coll? colors)
+                 colors
+                 (vector colors))]
+    (apply ansi/style (apply str data) colors)))
 
 (def ^:dynamic *logfile* "log/clojure.log")
 (def ^:dynamic *loglevel* :info)
@@ -43,8 +62,8 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
 ;; to the log if none is set, which we don't want, which is why it's
 ;; not here now.
 ;;
-(def debugging-log-prefix-format "%d %l [%p] : %throwable%m%n")
-(def production-log-prefix-format "%d [%p] : %throwable%m%n")
+(def debugging-log-prefix-format "%d (%t) %l [%p] : (%x) %throwable%m%n")
+(def production-log-prefix-format "%d (%t) [%p] : (%x) %throwable%m%n")
 
 
 ;; Some basic logging adapters.
@@ -92,7 +111,7 @@ only necessary if you don't want to use the general default logfile
 for that namespace."
      (set-namespace-logger! (str *ns*)
                   *loglevel*
-                  (appender-for-file logfile))))
+                  (*appender-fn* logfile))))
 
 (def initialized (atom false))
 (defn start!
@@ -109,7 +128,7 @@ for itself when used separately.
      (when (or (not @initialized) force)
        (log-config/set-loggers! :root
                                 {:level loglevel
-                                 :out (appender-for-file logfile)})
+                                 :out (rotating-logger logfile)})
        (swap! initialized (constantly true))))
   ([logfile loglevel] (start! logfile loglevel false))
   ([logfile] (start! logfile *loglevel*))
@@ -117,64 +136,84 @@ for itself when used separately.
 
 
 ;; Unfortunately, log/warn, log/error, etc. are all macros, which
-;; makes generating higher order functions on them annoying. So we use
-;; another macro.
-;; TODO: condense the two branches.
-;; TODO: Remove dependency on clojure.tools.logging altogether, make these regular functions.
-(defmacro make-logger [logger-symbol & colors]
-  (if colors
-    `(fn [& args#]
-       (let [output# (ansi/style (apply str args#) ~@colors)]
-         (if *copy-to-console* (println output#))
-         (~logger-symbol output#)))
-    `(fn [& args#]
-       (let [output# (apply str args#)]
-         (if *copy-to-console* (println output#))
-         (~logger-symbol output#)))))
+;; makes generating higher order functions on them annoying. So we convert them to functions.
+(defn trace 
+  [& forms]
+  (log/trace (apply str forms)))
+
+(defn debug
+  [& forms]
+  (log/debug (apply str forms)))
+
+(defn info
+  [& forms]
+  (log/info (apply str forms)))
+
+(defn warn
+  [& forms] 
+  (log/warn (apply color [:bright :yellow] forms)))
+
+(defn error
+  [& forms] 
+  (log/error (apply color [:bright :red] forms)))
+
+(defn fatal
+  [& forms] 
+  (log/fatal (apply color [:bright :red] forms)))
 
 
-(def trace (make-logger log/trace))
-(def debug (make-logger log/debug))
-(def info  (make-logger log/info))
-(def warn  (make-logger log/warn  *warn-color*))
-(def error (make-logger log/error *error-color*))
-(def fatal (make-logger log/fatal))
-(def spy (make-logger log/spy))
+(defmacro spy
+  [& forms]
+  `(let [result# (do ~@forms)]
+     (debug "[SPY] Evaluated forms: " (color [:bright :white] '~@forms) 
+            " and got: " (color [:magenta] result#) 
+            " which is a: " (class result#))
+     result#))
 
-(defn trace+
-  "Like trace, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply trace forms)))
 
-(defn debug+
-  "Like debug, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply debug forms)))
+(defn println-stderr
+  [& forms]
+  (binding [*out* *err*]
+    (apply println forms)))
 
-(defn info+
-  "Like info, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply info forms)))
 
-(defn warn+
-  "Like warn, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply warn forms)))
+(defmacro plus-logger
+  "Defines a new logger function called by the given symbol name suffixed with a plus.
+   This function copies forms given to it to STDERR in addition to
+  logging them at the specified level.
 
-(defn error+
-  "Like error, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply error forms)))
+   For example, (plus-logger info) creates a function called
+  info+. Calling (info+ \"foo\") is the same as calling (info \"foo\"),
+  except that the message will be written to STDERR in addition to
+  logged at the :info level.  "
+  [logger-sym]
+  (let [fn-name (symbol (str logger-sym "+"))]
+    `(def ~fn-name
+       (fn
+         [& forms#]
+         (let [forms# (apply str forms#)]
+           (println-stderr (str "[" (.toUpperCase (str '~logger-sym)) "] " forms#))
+           (~logger-sym forms#))))))
 
-(defn fatal+
-  "Like fatal, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply fatal forms)))
+(plus-logger trace)
+(plus-logger info)
+(plus-logger debug)
+(plus-logger warn)
+(plus-logger error)
+(plus-logger fatal)
 
-(defn spy+
-  "Like spy, but copies messages to STDOUT in addition to logging them."
-  [ & forms]
-  (with-console (apply spy forms)))
+
+(defmacro spy+
+  "Like spy, but copies messages to STDERR in addition to logging them."
+  [& forms]
+  `(let [result#  (do ~@forms)
+         message# (str "[SPY] Evaluated forms: " (color [:bright :white] '~@forms) 
+                       " and got: " (color [:magenta] result#) 
+                       " which is a: " (class result#))]
+     (println-stderr message#)
+     (debug message#)))
+
+
 
 (defn stacktrace
   "Converts a Throwable into a sequence of strings with the stacktrace."
@@ -207,3 +246,16 @@ for itself when used separately.
   [ & args]
   (apply start! args)
   (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
+
+
+(defn set-log-level!
+  "Sets the global log level to the given level. Levels are keywords
+  - :debug, :info, :warn, etc."
+  [level]
+  (log-config/set-logger-level! :root level))
+
+
+(defn set-trace! [] (set-log-level! :trace))
+(defn set-debug! [] (set-log-level! :debug))
+(defn set-info!  [] (set-log-level! :info))
+(defn set-warn!  [] (set-log-level! :warn))
