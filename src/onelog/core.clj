@@ -217,13 +217,13 @@ for itself when used separately.
 
 (defn stacktrace
   "Converts a Throwable into a sequence of strings with the stacktrace."
-  [throwable]
+  [^Throwable throwable]
   (clojure.string/join "\n" (doall (map str (.getStackTrace throwable)))))
 
 (defn root-cause
   "Returns the last 'cause' Throwable in a chain of Throwables.
  (From http://clojuredocs.org/clojure_core/clojure.stacktrace/root-cause)"
-  [tr]
+  [^Throwable tr]
   (if-let [cause (.getCause tr)]
     (recur cause)
     tr))
@@ -233,7 +233,7 @@ for itself when used separately.
   message, and the stacktrace.
 
  If there is a chain of causes present, also logs the root cause."
-  [tr]
+  [^Throwable tr]
   (str
    (.getName (class tr)) ": " (or (.getMessage tr) "<No Message>") "\n"
    (stacktrace tr)
