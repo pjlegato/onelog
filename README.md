@@ -21,7 +21,7 @@ logging in a process going to one file.
 
 Add the following dependency to your `project.clj`:
 
-    [onelog "0.4.3"]
+    [onelog "0.4.5"]
 
 You can now require Onelog and start logging:
 
