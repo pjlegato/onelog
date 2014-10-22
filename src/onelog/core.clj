@@ -10,10 +10,12 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
 "
   (:require
    [clojure.tools.logging :as log]
+   [io.aviso.exception :refer [write-exception format-exception]]
    [clj-logging-config.log4j :as log-config]
    [clansi.core :as ansi]
    )
   (import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
+
 
 (defn color
   "ANSI colorizes the given data and returns it.
@@ -34,11 +36,13 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
                  (vector colors))]
     (apply ansi/style (apply str data) colors)))
 
+
 (def ^:dynamic *logfile* "log/clojure.log")
 (def ^:dynamic *loglevel* :info)
 
 (def ^:dynamic *warn-color* [:bright :yellow])
 (def ^:dynamic *error-color* [:bright :red])
+
 
 ;; If set to true, will copy all log messages to STDOUT in addition to logging them
 (def ^:dynamic *copy-to-console* false)
@@ -113,6 +117,12 @@ for that namespace."
                   *loglevel*
                   (*appender-fn* logfile))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Starting the logger
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (def initialized (atom false))
 (defn start!
   "Sets a default, appwide log adapter. Optional arguments set the
@@ -133,6 +143,76 @@ for itself when used separately.
   ([logfile loglevel] (start! logfile loglevel false))
   ([logfile] (start! logfile *loglevel*))
   ([] (start! *logfile* *loglevel*)))
+
+(defn set-default-logger!
+  "Deprecated old name for start!."
+  [ & args]
+  (apply start! args)
+  (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Convert throwables into strings
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn stacktrace
+  "Converts a Throwable into a sequence of strings with the stacktrace."
+  [^Throwable throwable]
+  (clojure.string/join "\n" (doall (map str (.getStackTrace throwable)))))
+
+(defn root-cause
+  "Returns the last 'cause' Throwable in a chain of Throwables.
+ (From http://clojuredocs.org/clojure_core/clojure.stacktrace/root-cause)"
+  [^Throwable tr]
+  (if-let [cause (.getCause tr)]
+    (recur cause)
+    tr))
+
+(defn throwable
+  "Renders a single Throwable into string form. Includes the class name,
+  message, and the stacktrace.
+
+ If there is a chain of causes present, also logs the root cause."
+  [^Throwable tr]
+  ;; We used to do our own formatting here, but io.aviso.exception is
+  ;; so awesome that we just use that now...
+  (format-exception tr))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Adjust the log level
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn set-log-level!
+  "Sets the global log level to the given level. Levels are keywords
+  - :debug, :info, :warn, etc."
+  [level]
+  (log-config/set-logger-level! :root level))
+
+
+(defn set-trace! [] (set-log-level! :trace))
+(defn set-debug! [] (set-log-level! :debug))
+(defn set-info!  [] (set-log-level! :info))
+(defn set-warn!  [] (set-log-level! :warn))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn println-stderr
+  [& forms]
+  (binding [*out* *err*]
+    (apply println forms)))
+
+
+
 
 
 ;; Unfortunately, log/warn, log/error, etc. are all macros, which
@@ -161,22 +241,6 @@ for itself when used separately.
   [& forms] 
   (log/fatal (apply color [:bright :red] forms)))
 
-
-(defmacro spy
-  [& forms]
-  `(let [result# (do ~@forms)]
-     (debug "[SPY] Evaluated forms: " (color [:bright :white] '~@forms) 
-            " and got: " (color [:magenta] result#) 
-            " which is a: " (class result#))
-     result#))
-
-
-(defn println-stderr
-  [& forms]
-  (binding [*out* *err*]
-    (apply println forms)))
-
-
 (defmacro plus-logger
   "Defines a new logger function called by the given symbol name suffixed with a plus.
    This function copies forms given to it to STDERR in addition to
@@ -203,6 +267,18 @@ for itself when used separately.
 (plus-logger fatal)
 
 
+(defmacro spy
+  "Evaluates the given forms, logs their result at debug level, and then
+  returns their result. You can then take a given form and insert
+  a (spy (foo)) around it to trace its operation."
+  [& forms]
+  `(let [result# (do ~@forms)]
+     (debug "[SPY] Evaluated forms: " (color [:bright :white] '~@forms) 
+            " and got: " (color [:magenta] result#) 
+            " which is a: " (class result#))
+     result#))
+
+
 (defmacro spy+
   "Like spy, but copies messages to STDERR in addition to logging them."
   [& forms]
@@ -212,50 +288,3 @@ for itself when used separately.
                        " which is a: " (class result#))]
      (println-stderr message#)
      (debug message#)))
-
-
-
-(defn stacktrace
-  "Converts a Throwable into a sequence of strings with the stacktrace."
-  [^Throwable throwable]
-  (clojure.string/join "\n" (doall (map str (.getStackTrace throwable)))))
-
-(defn root-cause
-  "Returns the last 'cause' Throwable in a chain of Throwables.
- (From http://clojuredocs.org/clojure_core/clojure.stacktrace/root-cause)"
-  [^Throwable tr]
-  (if-let [cause (.getCause tr)]
-    (recur cause)
-    tr))
-
-(defn throwable
-  "Renders a single Throwable into string form. Includes the class name,
-  message, and the stacktrace.
-
- If there is a chain of causes present, also logs the root cause."
-  [^Throwable tr]
-  (str
-   (.getName (class tr)) ": " (or (.getMessage tr) "<No Message>") "\n"
-   (stacktrace tr)
-   (let [cause (root-cause tr)]
-     (if (not (identical? cause tr))
-       (str (ansi/style "\n\n  Caused by:\n" :bright :white) (throwable cause))))))
-
-(defn set-default-logger!
-  "Deprecated old name for start!."
-  [ & args]
-  (apply start! args)
-  (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
-
-
-(defn set-log-level!
-  "Sets the global log level to the given level. Levels are keywords
-  - :debug, :info, :warn, etc."
-  [level]
-  (log-config/set-logger-level! :root level))
-
-
-(defn set-trace! [] (set-log-level! :trace))
-(defn set-debug! [] (set-log-level! :debug))
-(defn set-info!  [] (set-log-level! :info))
-(defn set-warn!  [] (set-log-level! :warn))
