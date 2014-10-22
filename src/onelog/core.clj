@@ -144,12 +144,6 @@ for itself when used separately.
   ([logfile] (start! logfile *loglevel*))
   ([] (start! *logfile* *loglevel*)))
 
-(defn set-default-logger!
-  "Deprecated old name for start!."
-  [ & args]
-  (apply start! args)
-  (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -288,3 +282,17 @@ for itself when used separately.
                        " which is a: " (class result#))]
      (println-stderr message#)
      (debug message#)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Deprecated code, for backwards compatibility
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn set-default-logger!
+  "Deprecated old name for start!."
+  [ & args]
+  (apply start! args)
+  (error+ "set-default-logger! is deprecated - change your code to use start! instead."))
+
