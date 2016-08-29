@@ -13,7 +13,7 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
    [clj-logging-config.log4j :as log-config]
    [clansi.core :as ansi]
    )
-  (import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
+  (:import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
 
 (defn color
   "ANSI colorizes the given data and returns it.
