@@ -12,9 +12,8 @@ TODO: Add profiling methods (i.e. run a function and log how long it took)
    [clojure.tools.logging :as log]
    [io.aviso.exception :refer [write-exception format-exception]]
    [clj-logging-config.log4j :as log-config]
-   [clansi.core :as ansi]
-   )
-  (:import (org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender)))
+   [clansi.core :as ansi])
+  (:import [org.apache.log4j DailyRollingFileAppender EnhancedPatternLayout FileAppender]))
 
 
 (defn color
